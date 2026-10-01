@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Changes</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1E3EA6;--block:#142C80;--text:#fff;--hi:#F6C61B;--on-hi:#0B1633;--card:#F4F1E8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0B1633;--block:#17275A;--text:#F2F4FA}}
+:root[data-theme="dark"]{--bg:#0B1633;--block:#17275A;--text:#F2F4FA}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.4 "Libre Franklin","Franklin Gothic Medium","Arial Narrow",Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+main{max-width:520px;margin:0 auto;padding:24px 16px 48px}
+h1{font-weight:900;font-size:clamp(56px,18vw,92px);line-height:.85;letter-spacing:-.04em;margin:0 0 16px}
+.sub{margin:0 0 24px;max-width:34ch}
+button{font:inherit;font-weight:600;color:var(--text);background:var(--block);border:0;border-radius:0;min-height:44px;padding:0 8px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+button.sel{background:var(--hi);color:var(--on-hi)}
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:8px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tempo{display:flex;align-items:center;gap:16px;margin:24px 0 16px;font-weight:600}
+.tempo input{flex:1;accent-color:var(--hi);min-height:44px}
+#play{width:100%;min-height:60px;background:var(--card);color:var(--on-hi);font-weight:900;font-size:22px}
+.home{margin:24px 0 8px;font-size:14px}
+.home b{color:var(--hi)}
+.bars{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.bar{background:var(--card);color:var(--on-hi);padding:8px 6px;min-height:84px;display:flex;flex-direction:column;gap:4px}
+.bar.on{background:var(--hi)}
+.n{font-size:11px;font-weight:600}
+.chs{display:flex;flex-direction:column;gap:4px}
+.ch{background:transparent;color:inherit;min-height:44px;padding:0 4px;text-align:left;display:flex;flex-direction:column;justify-content:center;line-height:1.15}
+.ch b{font-weight:900;font-size:16px;letter-spacing:-.01em}
+.ch span{font-size:11px;font-weight:400}
+.ch.sel{background:var(--on-hi);color:var(--card)}
+h2.chord{font-weight:900;font-size:56px;line-height:1;letter-spacing:-.03em;margin:32px 0 16px}
+.tones{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.tones span{background:var(--card);color:var(--on-hi);padding:8px 12px;font-weight:900;font-size:18px;display:flex;flex-direction:column;min-width:56px}
+.tones small{font-size:11px;font-weight:600}
+.hint{margin:0 0 8px;font-size:14px}
+.sc{display:block;width:100%;text-align:left;padding:12px;margin-bottom:8px;min-height:60px}
+.sc .top{display:flex;justify-content:space-between;gap:8px}
+.sc em{font-style:normal;font-size:13px;font-weight:400;text-align:right}
+.sc .notes{display:block;margin-top:4px;color:var(--hi);font-weight:600;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<main>
+<h1>Changes</h1>
+<p class="sub">Pick a key and a style. Tap a chord to hear it and see which scales fit.</p>
+<div id="keys" class="g6"></div>
+<div id="styles" class="g2"></div>
+<div class="tempo"><label for="bpm">Tempo <span id="bpmv">92</span></label><input id="bpm" type="range" min="60" max="200" value="92"></div>
+<button id="play">Play</button>
+<p id="home" class="home"></p>
+<div id="bars" class="bars"></div>
+<section id="detail"></section>
+</main>
+<script>
+const SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const FLAT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const KL=['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+const Q={
+'7':{sym:'7',iv:[0,4,7,10],deg:['R','3','5','b7'],sc:[['Mixolydian',[0,2,4,5,7,9,10],'Safe and bright'],['Blues scale',[0,3,5,6,7,10],'Gritty'],['Lydian dominant',[0,2,4,6,7,9,10],'Floaty'],['Altered',[0,1,3,4,6,8,10],'Tense, wants to resolve']]},
+'m7':{sym:'m7',iv:[0,3,7,10],deg:['R','b3','5','b7'],sc:[['Dorian',[0,2,3,5,7,9,10],'Smooth, the jazz default'],['Minor pentatonic',[0,3,5,7,10],'Simple and safe'],['Blues scale',[0,3,5,6,7,10],'Gritty'],['Aeolian',[0,2,3,5,7,8,10],'Darker']]},
+'maj7':{sym:'maj7',iv:[0,4,7,11],deg:['R','3','5','7'],sc:[['Ionian',[0,2,4,5,7,9,11],'Plain major'],['Lydian',[0,2,4,6,7,9,11],'Dreamy'],['Major pentatonic',[0,2,4,7,9],'Simple and safe']]},
+'m7b5':{sym:'m7b5',iv:[0,3,6,10],deg:['R','b3','b5','b7'],sc:[['Locrian',[0,1,3,5,6,8,10],'Standard'],['Locrian natural 2',[0,2,3,5,6,8,10],'Smoother']]}
+};
+const c=(o,q,r)=>({o,q,r});
+const I7=c(0,'7','I7'),IV7=c(5,'7','IV7'),V7=c(7,'7','V7'),i7=c(0,'m7','im7'),iv7=c(5,'m7','ivm7'),bVI7=c(8,'7','bVI7'),
+Imaj=c(0,'maj7','Imaj7'),vi7=c(9,'m7','vim7'),ii7=c(2,'m7','iim7'),IVmaj=c(5,'maj7','IVmaj7'),iio=c(2,'m7b5','iim7b5'),bVImaj=c(8,'maj7','bVImaj7');
+const S={
+blues:{label:'Blues',minor:false,bpm:92,home:['blues scale',[0,3,5,6,7,10]],bars:[[I7],[IV7],[I7],[I7],[IV7],[IV7],[I7],[I7],[V7],[IV7],[I7],[V7]]},
+minorblues:{label:'Minor blues',minor:true,bpm:84,home:['blues scale',[0,3,5,6,7,10]],bars:[[i7],[i7],[i7],[i7],[iv7],[iv7],[i7],[i7],[bVI7],[V7],[i7],[V7]]},
+jazz:{label:'Jazz',minor:false,bpm:120,home:['major scale',[0,2,4,5,7,9,11]],bars:[[Imaj],[vi7],[ii7],[V7],[Imaj],[IVmaj],[ii7,V7],[Imaj]]},
+minorjazz:{label:'Minor jazz',minor:true,bpm:110,home:['natural minor',[0,2,3,5,7,8,10]],bars:[[i7],[iv7],[iio,V7],[i7],[iio],[V7],[bVImaj],[iio,V7]]}
+};
+let key=0,style='blues',bpm=92,sel={bar:0,ch:0},playing=false,act=-1;
+const $=s=>document.querySelector(s);
+const mod=n=>((n%12)+12)%12;
+const FM=[5,10,3,8,1],FN=[0,2,5,7,10,3,8,1];
+const nm=p=>((S[style].minor?FN:FM).includes(key)?FLAT:SHARP)[mod(p)];
+const root=ch=>mod(key+ch.o);
+const cname=ch=>nm(root(ch))+Q[ch.q].sym;
+const cur=()=>S[style].bars[sel.bar][sel.ch];
+const mtof=m=>440*2**((m-69)/12);
+
+/* audio */
+let ctx,master;
+function ensureCtx(){
+  if(!ctx){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    ctx=new AC();
+    const comp=ctx.createDynamicsCompressor();
+    master=ctx.createGain();master.gain.value=.7;
+    master.connect(comp);comp.connect(ctx.destination);
+    try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
+  }
+  if(ctx.state!=='running')ctx.resume();
+}
+function ep(m,t,d,v){
+  const f=mtof(m),o=ctx.createOscillator(),mo=ctx.createOscillator(),mg=ctx.createGain(),g=ctx.createGain();
+  o.frequency.value=f;mo.frequency.value=f;
+  mg.gain.setValueAtTime(f*1.1,t);mg.gain.exponentialRampToValueAtTime(f*.08,t+.6);
+  mo.connect(mg);mg.connect(o.frequency);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v*.22,t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+d+.5);
+  o.connect(g);g.connect(master);
+  o.start(t);mo.start(t);o.stop(t+d+.55);mo.stop(t+d+.55);
+}
+function bassNote(m,t,d){
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type='triangle';o.frequency.value=mtof(m);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.55,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g);g.connect(master);o.start(t);o.stop(t+d+.05);
+}
+const bs=p=>36+mod(p);
+function voice(ch){
+  return Q[ch.q].iv.map(i=>{let m=mod(root(ch)+i)+60;while(m>67)m-=12;return m});
+}
+function playChord(ch,t,d,v){voice(ch).forEach((m,i)=>ep(m,t+i*.012,d,v))}
+function playScale(r,iv){
+  ensureCtx();
+  const base=60+r,seq=iv.map(i=>base+i).concat([base+12],iv.slice(1).reverse().map(i=>base+i));
+  const t=ctx.currentTime+.05;
+  seq.forEach((m,k)=>ep(m,t+k*.2,.2,.6));
+}
+
+/* sequencer */
+let timer,beat=0,next=0,q=[];
+const chordAt=(bar,bb)=>{const b=S[style].bars[bar];return b.length===2?b[bb<2?0:1]:b[0]};
+function tick(){
+  const bd=60/bpm,bars=S[style].bars,nb=bars.length;
+  while(next<ctx.currentTime+.15){
+    const bar=Math.floor(beat/4)%nb,bb=beat%4,two=bars[bar].length===2;
+    const ch=chordAt(bar,bb),r=root(ch),iv=Q[ch.q].iv;
+    const nbeat=beat+1,nch=chordAt(Math.floor(nbeat/4)%nb,nbeat%4);
+    const k=two?bb%2:bb,last=two?1:3;
+    const bm=k===last?bs(root(nch))-1:bs(r+[0,iv[2],iv[1]][k]);
+    bassNote(bm,next,bd*.9);
+    if(bb===0||(two&&bb===2))playChord(ch,next,bd*1.4,.8);
+    if(bb===1&&!two)playChord(ch,next+bd*.66,bd*.4,.6);
+    if(bb===0)q.push({t:next,bar});
+    beat++;next+=bd;
+  }
+}
+function raf(){
+  if(!playing)return;
+  while(q.length&&q[0].t<=ctx.currentTime)setActive(q.shift().bar);
+  requestAnimationFrame(raf);
+}
+function setActive(b){act=b;document.querySelectorAll('.bar').forEach((e,i)=>e.classList.toggle('on',i===b))}
+function start(){ensureCtx();beat=0;next=ctx.currentTime+.1;q=[];playing=true;timer=setInterval(tick,25);raf()}
+function stop(){playing=false;clearInterval(timer);q=[];setActive(-1)}
+
+/* ui */
+function render(){
+  $('#keys').innerHTML=KL.map((n,i)=>`<button class="${i===key?'sel':''}" data-k="${i}">${n}</button>`).join('');
+  $('#styles').innerHTML=Object.entries(S).map(([id,s])=>`<button class="${id===style?'sel':''}" data-s="${id}">${s.label}</button>`).join('');
+  $('#play').textContent=playing?'Stop':'Play';
+  const h=S[style].home;
+  $('#home').innerHTML=`Home scale for the whole tune: <b>${nm(key)} ${h[0]}</b> (${h[1].map(i=>nm(key+i)).join(' ')})`;
+  $('#bars').innerHTML=S[style].bars.map((bar,bi)=>`<div class="bar${act===bi?' on':''}"><span class="n">${bi+1}</span><div class="chs">${bar.map((ch,ci)=>`<button class="ch${sel.bar===bi&&sel.ch===ci?' sel':''}" data-b="${bi}" data-c="${ci}"><b>${cname(ch)}</b><span>${ch.r}</span></button>`).join('')}</div></div>`).join('');
+  const ch=cur(),r=root(ch),qd=Q[ch.q];
+  $('#detail').innerHTML=`<h2 class="chord">${cname(ch)}</h2>
+<div class="tones">${qd.iv.map((i,x)=>`<span><small>${qd.deg[x]}</small>${nm(r+i)}</span>`).join('')}</div>
+<p class="hint">Scales that fit. Tap one to hear it.</p>
+${qd.sc.map((s,x)=>`<button class="sc" data-x="${x}"><span class="top"><b>${nm(r)} ${s[0]}</b><em>${s[2]}</em></span><span class="notes">${s[1].map(i=>nm(r+i)).join(' ')}</span></button>`).join('')}`;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  ensureCtx();
+  const d=b.dataset;
+  if(d.k!==undefined){key=+d.k;render()}
+  else if(d.s){style=d.s;bpm=S[style].bpm;$('#bpm').value=bpm;$('#bpmv').textContent=bpm;sel={bar:0,ch:0};beat=0;q=[];act=-1;render()}
+  else if(d.b!==undefined){sel={bar:+d.b,ch:+d.c};if(!playing)playChord(cur(),ctx.currentTime+.02,1.2,.9);render()}
+  else if(d.x!==undefined){const ch=cur();playScale(root(ch),Q[ch.q].sc[+d.x][1])}
+  else if(b.id==='play'){playing?stop():start();render()}
+});
+$('#bpm').addEventListener('input',e=>{bpm=+e.target.value;$('#bpmv').textContent=bpm});
+render();
+</script>
+</body>
+</html>
